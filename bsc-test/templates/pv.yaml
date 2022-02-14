@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bsc-pv
+spec:
+  capacity:
+    storage: 5200Gi
+  accessModes:
+  - "ReadWriteOnce"
+  persistentVolumeReclaimPolicy: "Retain"
+  storageClassName: "local-storage"
+  local:
+    path: "/mnt/stateful_partition/kube-ephemeral-ssd"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: "kubernetes.io/hostname"
+          operator: "In"
+          values:
+          - "gke-london-b-bsc-node-pool-c76d8f47-w5xr" # Add the name of the node from GKE node pool
+          

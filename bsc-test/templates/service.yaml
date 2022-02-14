@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bsc-node
+  labels:
+    {{- include "app.labels" . | nindent 4 }} 
+    app.kubernetes.io/component: bsc-node
+spec:
+  clusterIP: None
+  ports:
+    - name: rpc
+      port: 8545
+    - name: ws
+      port: 8546
+    - name: p2p-udp
+      port: {{ $.Values.port }}
+      targetPort: {{ $.Values.port }}
+      protocol: UDP
+    - name: p2p-tcp
+      port: {{ $.Values.port }}
+      targetPort: {{ $.Values.port }}
+      protocol: TCP
+  selector:
+    {{- include "app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: bsc-node

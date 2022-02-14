@@ -1,0 +1,22 @@
+replicaCount: 1
+
+image:
+  repository: gcr.io/fetch-ai-sandbox/bsc-node-image
+  tag: latest
+  pullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: 4000m
+    memory: 40Gi
+  requests:
+    cpu: 1000m
+    memory: 40Gi
+istio:
+  p2p:
+    dns: bsc-nilam.sandbox-london-b.fetch-ai.com
+  target: fetchpub.sandbox-london-b.fetch-ai.com
+  ingressgwname: istio-fetchpubig
+port: 30311
+  
+imagePullSecrets: []
