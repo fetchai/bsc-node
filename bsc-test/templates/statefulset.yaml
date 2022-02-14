@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bsc-node
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bsc-node
+spec:
+  serviceName: bsc-node
+  replicas: {{ .Values.replicaCount }} # by default is 1 
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: bsc-node # has to match .spec.template.metadata.labels
+  template:
+    metadata:
+      labels:
+        {{- include "app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: bsc-node # has to match .spec.template.metadata.labels
+    spec:
+      terminationGracePeriodSeconds: 10
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      containers:
+      - name: bsc-node
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+        {{- if .Values.resources }}
+        resources: {{- toYaml .Values.resources | nindent 12 }}
+        {{- end }}
+
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - syncingstate=$(curl -s 127.0.0.1:8545/knownStates? | jq '.result.eth_syncing, .result.highestBlock > "0"') && if [ $syncingstate=true ]; then echo "Terminating" && exit 1; fi
+          initialDelaySeconds: 1
+          periodSeconds: 30
+          failureThreshold: 3
+
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - syncingstate=$(curl -s 127.0.0.1:8545/knownStates? | jq '.result.eth_syncing, .result.highestBlock > "0"') && if [ $syncingstate=true ]; then echo "Terminating" && exit 1; fi
+          failureThreshold: 10
+          periodSeconds: 3600
+      
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - syncingstate=$(curl -s 127.0.0.1:8545/knownStates? | jq '.result.eth_syncing, .result.highestBlock > "0"') && if [ $syncingstate=true ]; then echo "Terminating" && exit 1; fi
+          initialDelaySeconds: 30
+          failureThreshold: 30
+          periodSeconds: 10
+          
+        
+        ports:
+          - name: rpc
+            containerPort: 8545
+          - name: ws
+            containerPort: 8546
+          - name: p2p-tcp
+            containerPort: {{ $.Values.port }}
+          - name: p2p-udp
+            containerPort: {{ $.Values.port }}
+            protocol: UDP
+        
+        volumeMounts:
+        - name: bsc-pv
+          mountPath: /root/.bsc
+      
+      tolerations:
+      - key: bsc-taint
+        operator: Equal
+        value: bsc-pod-taint
+        effect: PreferNoSchedule
+
+
+  volumeClaimTemplates:
+  - metadata:
+      name: bsc-pv
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5200Gi
+      storageClassName: local-storage
